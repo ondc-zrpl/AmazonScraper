@@ -88,13 +88,10 @@ tldextract==5.1.1
 tornado==6.4
 traitlets==5.14.0
 Twisted==22.10.0
-twisted-iocpsupport==1.0.4
 typing_extensions==4.8.0
-tzdata==2023.3
 urllib3==2.1.0
 virtualenv==20.25.0
 w3lib==2.1.2
-wcwidth==0.2.12
 webencodings==0.5.1
 Werkzeug==3.0.1
 zope.interface==6.1
