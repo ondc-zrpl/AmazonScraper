@@ -5,6 +5,9 @@ import requests
 
 app = Flask(__name__)
 
+PROXY_URL = 'https://proxy.scrapeops.io/v1/'
+PROXY_API_KEY = '3c1fb83d-5b93-4495-b023-170775d435f7'
+
 
 def get_product_details(asin):
     ua = UserAgent()
@@ -16,17 +19,22 @@ def get_product_details(asin):
 
     print(f"Using User-Agent: {headers['User-Agent']}")
 
-    response = requests.get(
-        url=f'https://www.amazon.in/dp/{asin}',
+    proxy_response = requests.get(
+        url=PROXY_URL,
+        params={
+            'api_key': PROXY_API_KEY,
+            'url': f'https://www.amazon.in/dp/{asin}', 
+        },
         headers=headers
     )
 
-    if response.status_code != 200:
+    if proxy_response.status_code != 200:
         return {
-            'error': f"Request failed with status code {response.status_code}."
+            'error': f"Proxy request failed with status code {proxy_response.status_code}."
         }
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(proxy_response.content, 'html.parser')
+    #print(soup)
 
     # Product title
     product_title = soup.find('span', {'id': 'productTitle'}).text.strip()
