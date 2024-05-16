@@ -41,14 +41,25 @@ def get_product_details(asin):
     print(product_title)
 
     # Product price
-    price_element = soup.find('span', {'class': 'a-price-whole'})
-    if price_element:
-        product_price = price_element.text.strip()
-        if product_price.endswith('.'):
-            product_price = product_price[:-1]
+    price_div = soup.find('div', {'id': 'corePriceDisplay_desktop_feature_div'})
+
+# Check if the div is found
+    if price_div:
+        # Find the price element inside this div
+        price_element = price_div.find('span', {'class': 'a-price-whole'})
+    
+        if price_element:
+            product_price = price_element.text.strip()
         
+            # Remove trailing period if exists
+            if product_price.endswith('.'):
+                product_price = product_price[:-1]
+        
+        else:
+            product_price = 'Price not available'
     else:
         product_price = 'Price not available'
+
     print(product_price)
     # Check if product is sold by Amazon
     sold_by_amazon = bool(soup.find('span', {'id': 'sellerProfileTriggerId'}))
