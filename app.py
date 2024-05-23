@@ -1,107 +1,45 @@
 from flask import Flask, request, jsonify
-from bs4 import BeautifulSoup
-from fake_useragent import UserAgent
 import requests
 
 app = Flask(__name__)
 
-PROXY_URL = 'https://proxy.scrapeops.io/v1/'
-PROXY_API_KEY = '3c1fb83d-5b93-4495-b023-170775d435f7'
+API_KEY = "3c1fb83d-5b93-4495-b023-170775d435f7"
 
-
-def get_product_details(asin):
-    ua = UserAgent()
-    headers = {
-        'User-Agent': ua.random,
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': 'https://www.amazon.in/',
-    }
-
-    print(f"Using User-Agent: {headers['User-Agent']}")
-
-    proxy_response = requests.get(
-        url=PROXY_URL,
-        params={
-            'api_key': PROXY_API_KEY,
-            'url': f'https://www.amazon.in/dp/{asin}', 
-        },
-        headers=headers
-    )
-
-    if proxy_response.status_code != 200:
-        return {
-            'error': f"Proxy request failed with status code {proxy_response.status_code}."
-        }
-
-    soup = BeautifulSoup(proxy_response.content, 'html.parser')
-    #print(soup)
-
-    # Product title
-    product_title = soup.find('span', {'id': 'productTitle'}).text.strip()
-    print(product_title)
-
-    # Product price
-    price_div = soup.find('div', {'id': 'corePriceDisplay_desktop_feature_div'})
-
-# Check if the div is found
-    if price_div:
-        # Find the price element inside this div
-        price_element = price_div.find('span', {'class': 'a-price-whole'})
+def get_amazon_product_info(asin):
+    url = f"https://proxy.scrapeops.io/v1/?api_key={API_KEY}&url=https://www.amazon.in/dp/{asin}&auto_extract=amazon"
+    response = requests.get(url)
+    data = response.json()
     
-        if price_element:
-            product_price = price_element.text.strip()
-        
-            # Remove trailing period if exists
-            if product_price.endswith('.'):
-                product_price = product_price[:-1]
-        
+    if data["status"] == "parse_successful":
+        product_data = data["data"]
+        if product_data["availability_status"] == "In stock":
+            pricing_str = product_data["pricing"]
+            pricing = int(''.join(filter(str.isdigit, pricing_str)))
+            product_name = product_data["name"]
+            image_url = product_data["images"][0]
+            return pricing, product_name, image_url
         else:
-            product_price = 'Price not available'
+            return "Not available or out of stock", None, None
     else:
-        product_price = 'Price not available'
+        return "Error parsing the URL", None, None
 
-    print(product_price)
-    # Check if product is sold by Amazon
-    sold_by_amazon = bool(soup.find('span', {'id': 'sellerProfileTriggerId'}))
-
-    # Availability status
-    availability_element = soup.find('span', {'class': 'a-size-medium a-color-success'})
-    if availability_element:
-        availability_status = availability_element.text.strip()
-        if availability_status.endswith('.'):
-            availability_status = availability_status[:-1]
-    else:
-        availability_status = 'Availability status not available'
-
-    # Image URL
-    image_element = soup.find('img', {'id': 'landingImage'})
-    if image_element:
-        image_url = image_element['src']
-    else:
-        image_url = 'Image not available'
-    price = "-1" if availability_status == "Currently unavailable" else product_price
-    return {
-        'title': product_title,
-        'price': price,
-        'image_url': image_url,
-        'sold_by_amazon': sold_by_amazon,
-        'availability_status': availability_status
-    }
-@app.route('/')
-def hello():
-    return 'Hello, World!'
 @app.route('/get_amazon_product_info', methods=['GET'])
-def get_product_info():
+def product_info():
     asin = request.args.get('asin')
-    
 
     if not asin:
-        return jsonify(error='The "asin" parameter is required.'), 400
+        return jsonify({"error": "ASIN is required."}), 400
 
-    
+    pricing, product_name, image_url = get_amazon_product_info(asin)
 
-    product_info = get_product_details(asin)
-    return jsonify(product_info)
+    if pricing:
+        return jsonify({
+            "price": pricing,
+            "title": product_name,
+            "image_url": image_url
+        })
+    else:
+        return jsonify({"message": "NA"})
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
